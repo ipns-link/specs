@@ -2,6 +2,28 @@
 
 ![Projects](https://img.shields.io/badge/Projects-ipns--link%2C%20ipns--link--gateway-blue) ![PR](https://img.shields.io/badge/PRs-Accepted-brightgreen)
 
+## Table of Contents  
+  - [IPNS-Link Specifications](#ipns-link-specifications)  
+      - [Why IPNS-Link](#why-ipns-link)  
+      - [Basic principles](#basic-principles)  
+          - [Participating nodes](#participating-nodes)  
+          - [What source node does](#what-source-node-does)  
+          - [What gateway does](#what-gateway-does)  
+      - [Where IPNS comes in](#where-ipns-comes-in)  
+          - [Publishing multiaddress with minimal bandwidth consumption](#publishing-multiaddress-with-minimal-bandwidth-consumption)  
+          - [Redirect to IPNS-Link-gateway](#redirect-to-ipns-link-gateway)  
+      - [Template for the IPNS post](#template-for-the-ipns-post)  
+          - [Notes](#notes)  
+      - [IPNS-Link-gateway specs](#ipns-link-gateway-specs)  
+      - [Benefits](#benefits)  
+          - [Security and Trustlessness](#security-and-trustlessness)  
+          - [Uncensored hosting](#uncensored-hosting)  
+          - [Anonymity](#anonymity)  
+          - [No need to pay for DDNS](#no-need-to-pay-for-ddns)  
+          - [Low-cost hobby hosting](#low-cost-hobby-hosting)  
+      - [Implementations](#implementations)  
+#####   
+
 ### Why IPNS-Link
 
 [One can host a static website using IPFS+IPNS](https://medium.com/pinata/how-to-easily-host-a-website-on-ipfs-9d842b5d6a01). But what about a dynamic website or web app that needs to run server-side code! IPNS-Link aims to make it possible to expose http-servers using IPFS+IPNS.
