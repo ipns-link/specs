@@ -3,9 +3,11 @@
 ![Projects](https://img.shields.io/badge/Projects-ipns--link%2C%20ipns--link--gateway-blue) ![PR](https://img.shields.io/badge/PRs-Accepted-brightgreen)
 
 ## Table of Contents  
+[![tocgen](https://img.shields.io/badge/Generated%20using-tocgen-blue)](https://github.com/SomajitDey/tocgen)  
   - [IPNS-Link Specifications](#ipns-link-specifications)  
       - [Why IPNS-Link](#why-ipns-link)  
       - [Basic principles](#basic-principles)  
+          - [Schema](#schema)  
           - [Participating nodes](#participating-nodes)  
           - [What source node does](#what-source-node-does)  
           - [What gateway does](#what-gateway-does)  
@@ -30,9 +32,13 @@
 
 ### Basic principles
 
-##### Participating nodes 
+##### Schema
 
-1. Source node (localhost) where the http-server runs. 
+![IPNS-Link_schema](./IPNS-Link_schema.jpg)
+
+##### Participating nodes
+
+1. Source node (origin server) where the http-server (web app) runs.
 2. (Public) gateway to access the http-server (from browser).
 
 ##### What source node does
