@@ -17,6 +17,7 @@
       - [Template for the IPNS post](#template-for-the-ipns-post)  
           - [Notes](#notes)  
       - [IPNS-Link-gateway specs](#ipns-link-gateway-specs)  
+          - [Path gateway](#path-gateway)  
       - [Benefits](#benefits)  
           - [Security and Trustlessness](#security-and-trustlessness)  
           - [Uncensored hosting](#uncensored-hosting)  
@@ -24,6 +25,7 @@
           - [No need to pay for DDNS](#no-need-to-pay-for-ddns)  
           - [Low-cost hobby hosting](#low-cost-hobby-hosting)  
       - [Implementations](#implementations)  
+      - [Contribute](#contribute)  
 #####   
 
 ### Why IPNS-Link
@@ -107,18 +109,40 @@ Thanks to the inlining, the IPNS record pointing to this tiny website actually c
 
 ### IPNS-Link-gateway specs
 
-1. Determine the source node's identifier (PeerID or any other IPNS name) from the user request (from the path, for example). Redirect, if necessary.
+1. Determine the source node's identifier ([PeerID](https://docs.libp2p.io/concepts/peer-id/#what-is-a-peerid) or any other [IPNS name](https://docs.ipfs.io/concepts/ipns/)) from the user request (see "Resolution style" below). Redirect, if necessary.
 2. Access the [IPNS post](#template-for-the-ipns-post)  by the source node, and retrieve the multiaddresses by parsing it.
-3. (Swarm) Connect to the source node using the retrieved multiaddresses.
+3. Connect to the source node using the retrieved multiaddresses.
 4. Support all HTTP methods while forwarding incoming http-requests to the web app at the source node.
+5. No [`X-Forwarded-For`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For) header that can expose the originating IP address of the incoming requests.
+6. Might contain [`X-Forwarded-Host`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Host), [`X-Forwarded-Port`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Port) and [`X-Forwarded-Proto`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto) headers.
+7. Resolution style: Path, Subdomain and DNSLink. See [this](https://docs.ipfs.io/concepts/ipfs-gateway/#gateway-types) to familiarize yourself with these types.
 
-[Resolution style: Path, Subdomain and DNSLink](https://docs.ipfs.io/concepts/ipfs-gateway/#gateway-types).
+##### Path gateway
 
-| Service   | Style     | Canonical form of access                                     | Remarks                                                      |
-| --------- | --------- | :----------------------------------------------------------- | :----------------------------------------------------------- |
-| IPNS-Link | path      | `https://{gateway URL}/ipns/{IPNS identifier}/{optional path to resource}` **or,** `https://{gateway URL}/p2p/{PeerID}/http/{optional path to resource}` | IPNS identifier or PeerID of source node is lost when accessing a root-relative URL: `/relative-path`. Needs server-side cache or browser cookies to resolve. |
-| IPNS-Link | subdomain | `https://{IPNS identifier}.{gatewayURL}/{optional path to resource}` | 1. CORS ; 2. No problem with root-relative URL.              |
-| IPNS-Link | DNSLink   | Useful when IPNS identifier is a domain:`https://{example.com}/{optional path to resource}` **or,** `https://{gateway URL}/ipns/{example.com}/{optional path to resource}` | 1. CORS ; 2. No problem with root-relative URL ; 3. DNSLink, not user-agent, specifies the gateway to use |
+Request types: 
+
+1. `http(s)://gateway.tld/ipns/IPNSname/*` or  
+2. `http(s)://gateway.tld/p2p/PeerID/http/*`
+
+Multiple `IPNSname`s can point to the same `PeerID`. Therefore, all paths of type 1 are redirected to the path of type 2.
+
+Path gateways are easier to deploy and maintain but provide no origin isolation. This causes problems on mainly two fronts, cookies and root-relative-URLs. We propose to solve these, albeit partially, with some header magic as follows.
+
+1. **Root-relative-URL:** When you are at path `https://gateway.tld/p2p/PeerID/http/document` and you click a link for `/image`, the request path becomes `https://gateway.tld/image`. The gateway, therefore, needs some means to extract the `PeerID` which is now missing from the path. Note that it can use the [`Referer`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referer) header for this purpose. [To make this work always, the gateway may inject a `strict-origin-when-cross-origin` [`Referrer-Policy`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy) in the response message from the source node]. After extracting the `PeerID` from the `Referer` header, the gateway makes a final redirection to `/p2p/PeerID/http/image`.
+
+2. **Cookies:** If source nodes are allowed to [set cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie) with [path attributes](https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.4), cookies set by one source node might be sent to another. To mitigate this, the gateway may modify the cookie-paths by prefixing them with `/p2p/PeerID/http`. So, the header 
+
+   ```html
+   Set-Cookie: Name=Value; Path=/path
+   ```
+
+   from the source node with peer ID = `PeerID` becomes
+
+   ```html
+   Set-Cookie: Name=Value; Path=/p2p/PeerID/http/path
+   ```
+
+   This works only because the gateway always redirects to paths of type: `/p2p/PeerID/http/*` (see above). For added safety, the gateway might remove any `Domain` attribute in the [`Set-Cookie`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie) header.
 
 ### Benefits
 
@@ -148,3 +172,7 @@ Host small-scale server on a Raspberry Pi or an old PC and expose with IPNS-Link
 
 [ipns-link-gateway](https://github.com/ipns-link/ipns-link-gateway)
 
+### Contribute
+
+Lots of things to be done, lots of help needed. You may contribute to this project in [multiple](https://github.com/ipns-link/contribute) ways.
+
