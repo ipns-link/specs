@@ -93,25 +93,16 @@ Yes, only the prototypes (MVP).
 
 The command-line app that you expose your local server with: https://github.com/ipns-link/ipns-link
 
-An easy to host IPNS-Link-Gateway: https://github.com/ipns-link/ipns-link-gateway
+An easy to host IPNS-Link-Gateway: https://github.com/ipns-link/ipns-link-gateway. Such a gateway is hosted at [ipns.live](https://www.ipns.live).
 
 ### How can the community contribute?
 
-Lots of things are yet to be done actually and any help would be highly appreciated. Some high-priority areas where serious help is urgently needed are: 
-
-1. Volunteers need to host public [IPNS-Link-gateway](https://github.com/ipns-link/ipns-link-gateway)s, such as https://ipns.live.
-2. The current implementations, being prototypes, have been rather hurriedly hacked with Bash. That they still work, simply tells how better things would be once the codebase is ported to Go, JS etc. So, volunteer developers are needed.
-3. The [project](https://github.com/ipns-link) lacks a decent homepage. PRs are highly welcome.
-4. Perhaps most of IPNS-Link users would require NAT-traversal. So, volunteers need to contribute [public relays](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#how-to-enable-8).
-
-IPNS-Link is and always will remain Free and Open-Source project by and for the community. The public gateways may be crowd-funded. Sponsors and well-wishers may donate using the corresponding link provided at the landing pages of every gateway.
-
-IPNS-Link is a baby now. If you think it has promise, let others know. Only active participation by the community can make it mature.
+Take a look [here](https://github.com/ipns-link/contribute).
 
 ### Where can the community discuss, critique or seek help about IPNS-Link freely?
 
-- The Issues or Discussions section of any repository in the [IPNS-Link organization](https://github.com/ipns-link) at GitHub.
-- Reddit: [r/ipns_link](r/ipns_link)
+- The Issues or Discussions section of any repository in the [IPNS-Link organization](https://github.com/ipns-link) at GitHub
+- Reddit: [r/ipns_link](https://www.reddit.com/r/ipns_link/)
 - [discuss.ipfs.io](https://discuss.ipfs.io)
 
 ### What influenced IPNS-Link?
