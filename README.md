@@ -1,178 +1,129 @@
-# IPNS-Link Specifications
+# IPNS-Link
 
-![Projects](https://img.shields.io/badge/Projects-ipns--link%2C%20ipns--link--gateway-blue) ![PR](https://img.shields.io/badge/PRs-Accepted-brightgreen)
+[One can add a static website to IPFS and address it using IPNS](https://medium.com/pinata/how-to-easily-host-a-website-on-ipfs-9d842b5d6a01). The website can then be accessed through any IPFS gateway. But what about a dynamic website or web app that needs to run server-side code! **IPNS-Link** makes it possible to address any http-server using IPNS.
 
-## Table of Contents  
-[![tocgen](https://img.shields.io/badge/Generated%20using-tocgen-blue)](https://github.com/SomajitDey/tocgen)  
-  - [IPNS-Link Specifications](#ipns-link-specifications)  
-      - [Why IPNS-Link](#why-ipns-link)  
-      - [Basic principles](#basic-principles)  
-          - [Schema](#schema)  
-          - [Participating nodes](#participating-nodes)  
-          - [What source node does](#what-source-node-does)  
-          - [What gateway does](#what-gateway-does)  
-      - [Where IPNS comes in](#where-ipns-comes-in)  
-          - [Publishing multiaddress with minimal bandwidth consumption](#publishing-multiaddress-with-minimal-bandwidth-consumption)  
-          - [Redirect to IPNS-Link-gateway](#redirect-to-ipns-link-gateway)  
-      - [Template for the IPNS post](#template-for-the-ipns-post)  
-          - [Notes](#notes)  
-      - [IPNS-Link-gateway specs](#ipns-link-gateway-specs)  
-          - [Path gateway](#path-gateway)  
-      - [Benefits](#benefits)  
-          - [Security and Trustlessness](#security-and-trustlessness)  
-          - [Uncensored hosting](#uncensored-hosting)  
-          - [Anonymity](#anonymity)  
-          - [No need to pay for DDNS](#no-need-to-pay-for-ddns)  
-          - [Low-cost hobby hosting](#low-cost-hobby-hosting)  
-      - [Implementations](#implementations)  
-      - [Contribute](#contribute)  
-#####   
+[This page presents a high-level overview. The detailed specs and implementation-intricacies would be documented elsewhere in this repository].
 
-### Why IPNS-Link
-
-[One can host a static website using IPFS+IPNS](https://medium.com/pinata/how-to-easily-host-a-website-on-ipfs-9d842b5d6a01). But what about a dynamic website or web app that needs to run server-side code! IPNS-Link aims to make it possible to expose http-servers using IPFS+IPNS.
-
-### Basic principles
-
-##### Schema
+### A picture is worth a thousand words. So let's start with one:
 
 ![IPNS-Link_schema](./IPNS-Link_schema.jpg)
 
-##### Participating nodes
+### In brief, this is how it works:
 
-1. Source node (origin server) where the http-server (web app) runs.
-2. (Public) gateway to access the http-server (from browser).
+- Alice runs her website on her device. She [exposes her local server with `ipns-link`](https://github.com/ipns-link/ipns-link/blob/main/tutorials/QuickStart.md) and gets an [IPNS-name or key](https://docs.ipfs.io/concepts/ipns/) that she can then distribute to her users/website-visitors.
+- Bob puts Alice's IPNS key in any [IPFS](https://ipfs.github.io/public-gateway-checker/) or [IPNS-Link](https://github.com/ipns-link/ipns-link-gateway) gateway in his browser. The gateway finds the [multiaddress](https://docs.libp2p.io/concepts/addressing/) of Alice's node from her IPNS record. It then establishes a persistent connection with her node and [proxies](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#p2p-http-proxy) for her server, delivering her website to Bob. Note that Bob can use any gateway, even a [self-hosted](https://github.com/ipns-link/ipns-link-gateway#self-hosting), local one. Alice's website, therefore, practically gets atleast as many URLs as there are public gateways: `http(s)://any.gateway.tld/ipns/AliceKey`.
 
-##### What source node does
+### IPFS is used basically as a CDN:
 
-1. Makes sure it is accessible from the public internet. Sets up [NAT-traversal](https://docs.libp2p.io/concepts/nat/), if needed.
-2. Publishes its public [multiaddress](https://docs.libp2p.io/concepts/addressing/).
-3. [Forwards incoming libp2p-streams with the `http` protocol to the local http-server.](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipfs-p2p)
+- Alice may pin the static contents of her website, such as images, media, css and javascripts, with an [IPFS cluster](https://cluster.ipfs.io/) or pinning-services such as [Pinata](https://www.pinata.cloud/).
+- Requests for those static contents from Bob's browser are served from IPFS. Only the requests for dynamic contents need ever reach Alice's origin-server.
 
-##### What gateway does
+### IPFS also makes streaming efficient:
 
-1. Access the public multiaddress of the source node and connect.
-2. Connect to the local http-server at the source node, as a [p2p http proxy](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#p2p-http-proxy).
+- Alice creates media and streams live. Her [`ipns-link`](https://github.com/ipns-link/ipns-link) daemon watches her media directory and dynamically adds the directory to IPFS whenever new content is added. The resulting [CID hash](https://docs.ipfs.io/concepts/content-addressing/) is published immediately with [IPNS pubsub](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipns-pubsub).
+- Bob and Charlie join the stream using the same gateway. The gateway retrieves the corresponding files from Alice using [bitswap](https://docs.ipfs.io/concepts/bitswap/) and caches with its local IPFS node. Bob and Charlie are then served from the cache. Alice thus has to upload her files only once per gateway, saving her bandwidth.
 
-### Where IPNS comes in
+### Let's look at some more features:
 
-##### Publishing multiaddress with minimal bandwidth consumption
+##### No need for domain names or DDNS. The IPNS-Key is enough
 
-An IPFS node stores its multiaddresses as Peer records in the [DHT](https://docs.ipfs.io/concepts/dht/#distributed-hash-tables-dhts). Staying connected to the [WAN-DHT](https://docs.ipfs.io/concepts/dht/#dual-dht) for hours, however, results in huge bandwidth consumption, even with [`Routing.Type=dhtclient`](https://github.com/ipfs/go-ipfs/blob/master/docs/config.md#routingtype).
+- Alice can simply export her libp2p-key-pair into a file, copy the file to another machine and import the keypair there. She can then port her entire website to the new machine and expose its local server with `ipns-link`. Because she is using the same key-pair, her website can still be accessed using the same IPNS-key, although her website is now running on an entirely new machine with perhaps a new public IP address.
 
-The source node solves this in the following way. It goes online with [`Routing.Type=none`](https://github.com/ipfs/go-ipfs/blob/master/docs/config.md#routingtype). Note that this does not affect its ability to use [Autorelay](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#autorelay) for NAT-traversal, as long as enough bootstrap nodes are there. If NAT traversal is not required, however, one can do away with the bootstrap nodes.
+- Similarly, a dynamic public IP address doesn't cause any problem either.
 
-Because it is disconnected from the WAN-DHT, the source node employs a secondary, ephemeral node to publish its DHT records to the public network periodically. This secondary node is ephemeral, in that it stays connected to the WAN-DHT only for a short while. Remaining online only for a few seconds for a few times every hour does not cost much bandwidth. 
+##### NAT-traversal
 
-An IPFS node, however, can put to DHT only the IPNS records of another node, not its [Provider or Peer records](https://docs.ipfs.io/concepts/dht/). The source node, therefore, puts its multiaddresses inside its [IPNS record](#template-for-the-ipns-post), `/ipns/PeerID`, and passes the record to the secondary node.
+IPFS's built-in [NAT-traversal](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#autorelay) helps in cases where there is no public IP at all.
 
-##### Redirect to IPNS-Link-gateway
+##### Intermittent connectivity
 
-The [gateway](#ipns-link-gateway-specs) that connects to the http-server at the source node is different from an [IPFS gateway](https://github.com/ipfs/go-ipfs/blob/master/docs/gateway.md) in the following ways. 
+If Alice has intermittent connections, Alice may configure [`ipns-link`](https://github.com/ipns-link/ipns-link/blob/main/MANUAL.md#onfail) such that Bob gets redirected to any URL of her choice, whenever Alice goes offline. The default redirect is to a "coming-soon" page, reassuring Bob that Alice would be back, soon.
 
-1. It needs to access the multiaddresses of the source node from IPNS instead of DHT.
-2. It needs to allow `/p2p` paths.
+##### No need for SSL
 
-To distinguish this gateway from an IPFS gateway, let's call it an [***IPNS-Link-gateway***](#ipns-link-gateway-specs).
+The p2p connection between the gateway and Alice's origin-server is [encrypted](https://docs.ipfs.io/concepts/privacy-and-encryption/#encryption). If Bob is using a local gateway on his machine to access Alice's website, then he is completely safe. Otherwise, he can simply use an https-enabled public gateway, such as https://www.ipns.live. Alice doesn't need to purchase and manage SSL certificates on her own anymore to serve securely.
 
-Now consider this. What if someone tries the path `/ipns/PeerIDofSourceNode` using one of the public [IPFS gateways](https://ipfs.github.io/public-gateway-checker/), in a browser? Won't it be great if the visitor is redirected to an IPNS-Link-gateway that can actually connect to the live web app running at the source node? To achieve this, the source node also puts an html redirect inside its [IPNS record](#template-for-the-ipns-post).
+##### Same origin policy
 
-### Template for the IPNS post
+The gateways assign each website its own subdomain.
 
-The post is actually a tiny static website with an `index.html` of the form:
 
-```html
-<meta http-equiv="refresh" content="0; url=https://example.com/ipns/PeerIDofSourceNode">
-<title>Redirecting...</title>
-If you are not redirected automatically, follow this <a href='https://example.com/ipns/PeerIDofSourceNode'>link</a>
 
-<!--ipns-link--
-/ip4/127.0.0.1/tcp/4001/p2p/PeerIDofRelay/p2p-circuit/p2p/PeerIDofSourceNode
---ipns-link-->
+# FAQs
 
-<!--
-Other texts, if any
--->
-```
 
-Replace `example.com` with an IPNS-Link-gateway of your choice. Replace the multiaddress `/ip4/...` with the fully qualified public multiaddress(es) of the source node.
 
-##### Notes
+### But an IPFS gateway such as ipfs.io doesn't support all these features:
 
-Add the post to IPFS using
+True. [IPFS-gateway](https://docs.ipfs.io/concepts/ipfs-gateway/#overview)s are designed to serve static sites only, they can't serve as proxies. Hence, IPNS-Link needs its own gateway. [ipns.live](https://ipns.live) is an example running the [prototype implementation](https://github.com/ipns-link/ipns-link-gateway). **Anyone can host an IPNS-Link-gateway as the code is free and open-source**.
 
-```bash
-ipfs add --inline --inline-limit=1000 --wrap-with-directory index.html
-```
+IPNS-Link-gateways and IPFS gateways, however, complement each other. Whenever Bob puts Alice's IPNS key into an IPFS gateway, it redirects Bob's browser to an IPNS-Link gateway that then connects Bob to Alice's site. On the other hand, an IPNS-Link-gateway redirects almost all requests for static content to IPFS gateways for offloading itself.
 
-Thanks to the inlining, the IPNS record pointing to this tiny website actually contains the whole website. Because the IPNS record is cached by DHT nodes, IPFS gateways and [IPNS Pubsub peers](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipns-pubsub), the website doesn't need to be provided by the source node itself, nor do we need to use a remote pinning service like [Pinata](https://www.pinata.cloud/).
+### Cool. But why care?
 
-### IPNS-Link-gateway specs
+Let's look at the following use cases, then.
 
-1. Determine the source node's identifier ([PeerID](https://docs.libp2p.io/concepts/peer-id/#what-is-a-peerid) or any other [IPNS name](https://docs.ipfs.io/concepts/ipns/)) from the user request (see "Resolution style" below). Redirect, if necessary.
-2. Access the [IPNS post](#template-for-the-ipns-post)  by the source node, and retrieve the multiaddresses by parsing it.
-3. Connect to the source node using the retrieved multiaddresses.
-4. Support all HTTP methods while forwarding incoming http-requests to the web app at the source node.
-5. No [`X-Forwarded-For`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For) header that can expose the originating IP address of the incoming requests.
-6. Might contain [`X-Forwarded-Host`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Host), [`X-Forwarded-Port`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Port) and [`X-Forwarded-Proto`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto) headers.
-7. Resolution style: Path, Subdomain and DNSLink. See [this](https://docs.ipfs.io/concepts/ipfs-gateway/#gateway-types) to familiarize yourself with these types.
+##### Censorship resistance
 
-##### Path gateway
-
-Request types: 
-
-1. `http(s)://gateway.tld/ipns/IPNSname/*` or  
-2. `http(s)://gateway.tld/p2p/PeerID/http/*`
-
-Multiple `IPNSname`s can point to the same `PeerID`. Therefore, all paths of type 1 are redirected to the path of type 2.
-
-Path gateways are easier to deploy and maintain but provide no origin isolation. This causes problems on mainly two fronts, cookies and root-relative-URLs. We propose to solve these, albeit partially, with some header magic as follows.
-
-1. **Root-relative-URL:** When you are at path `https://gateway.tld/p2p/PeerID/http/document` and you click a link for `/image`, the request path becomes `https://gateway.tld/image`. The gateway, therefore, needs some means to extract the `PeerID` which is now missing from the path. Note that it can use the [`Referer`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referer) header for this purpose. [To make this work always, the gateway may inject a `strict-origin-when-cross-origin` [`Referrer-Policy`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy) in the response message from the source node]. After extracting the `PeerID` from the `Referer` header, the gateway makes a final redirection to `/p2p/PeerID/http/image`.
-
-2. **Cookies:** If source nodes are allowed to [set cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie) with [path attributes](https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.4), cookies set by one source node might be sent to another. To mitigate this, the gateway may modify the cookie-paths by prefixing them with `/p2p/PeerID/http`. So, the header 
-
-   ```html
-   Set-Cookie: Name=Value; Path=/path
-   ```
-
-   from the source node with peer ID = `PeerID` becomes
-
-   ```html
-   Set-Cookie: Name=Value; Path=/p2p/PeerID/http/path
-   ```
-
-   This works only because the gateway always redirects to paths of type: `/p2p/PeerID/http/*` (see above). For added safety, the gateway might remove any `Domain` attribute in the [`Set-Cookie`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie) header.
-
-### Benefits
-
-##### Security and Trustlessness
-
-[IPFS uses transport-encryption, viz. data is secure when being sent from one IPFS node to another](https://docs.ipfs.io/concepts/privacy-and-encryption/#encryption). So gateway <--> source node connection is secure. If you are using a public IPNS-Link gateway with `https`, you ought to be secure, but only as long as you trust the public gateway provider. If you don't want to trust the public gateways you can always [host](https://github.com/ipns-link/ipns-link-gateway) your own, for free, locally or on cloud.
-
-##### Uncensored hosting
-
-To illustrate, imagine the Sci-Hub server exposed using IPNS-Link. In countries where Sci-Hub is blocked, one can simply access it through *any* public IPNS-Link-gateway.
+A website (say, `example.com`) that is blocked in a country or region may be accessed easily using IPNS-Link. Because the site already has a domain name, its IPNS key can be conveniently distributed as a [DNSLink](https://docs.ipfs.io/concepts/dnslink/#dnslink). Gateways can automatically resolve DNSLinks. So, alternate URLs for that site would simply look like, `http(s)://gateway.tld/ipns/example.com`.
 
 ##### Anonymity
 
-Accessing websites through public IPNS-Link-gateways hides your IP address from the websites visited. Compare Tor and VPN. As an aside, you may note that [IPFS is also experimenting with onion routing](https://dweb-primer.ipfs.io/avenues-for-access/tor-transport).
+Accessing websites through public gateways masks the user's IP address from the websites visited. [Compare [Tor](https://www.torproject.org/) and [VPN](https://en.wikipedia.org/wiki/Virtual_private_network)]. On the other hand, the origin-server's IP may be hidden from the visitors using an upcoming feature of [`ipns-link`](https://github.com/ipns-link/ipns-link).
 
-##### No need to pay for DDNS
+##### Microhosting
 
-Traditionally, if your server only had a dynamic public IP address, you would be forced to buy a DDNS service. With IPNS-Link, you can simply point your domain to `{your IPNS identifier}.{a public IPNS-Link-gateway URL}`.
+Anyone can host a dynamic website on a Raspberry Pi or an old PC and expose it with IPNS-Link. Costs and hassles are minimal. One no more needs a domain name, (wildcard) SSL certificates, a public (static) IP, or DDNS. The prototype implementation of [`ipns-link`](https://github.com/ipns-link/ipns-link) also makes sure bandwidth consumption is as low as possible.
 
-##### Low-cost hobby hosting
+Mobile devices remain on almost all the time and are good as lightweight servers. With [Termux](https://termux.com/), one can adapt `ipns-link` to android devices.  If most of the website contents is static, then only a few requests would ever reach the origin-server. Also `ipns-link` consumes very little CPU and bandwidth. This saves on battery. Even in face of intermittent connections, visitors may be kept engaged or informed with an appropriate redirect destination for when the server goes offline.
 
-Host small-scale server on a Raspberry Pi or an old PC and expose with IPNS-Link, readily, free of cost. No need to pay for a domain name. With built-in NAT-traversal, no need to buy public IP address either. With built-in [encryption](#security-and-trustlessness), no need to buy/manage SSL certificates.
+All these might help developers, students, hobbyists and tinkerers host their sites for free - be it for testing, learning, trying or for sheer joy.
 
-### Implementations
+##### Livestreams
 
-[ipns-link](https://github.com/ipns-link/ipns-link)
+With multiple gateways at their disposal, each visitor can choose the gateway nearest to them. Since each gateway serves the stream content from its local IPFS cache, this would ensure a faster streaming experience. Also the origin-server is significantly offloaded.
 
-[ipns-link-gateway](https://github.com/ipns-link/ipns-link-gateway)
+##### Private network
 
-### Contribute
+A giant company can build its own [private IPFS network](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#private-networks) consisting of its many origin-servers and a few public facing IPNS-Link-gateways to securely reverse proxy for all of those backends.
 
-Lots of things to be done, lots of help needed. You may contribute to this project in [multiple](https://github.com/ipns-link/contribute) ways.
-
+### Any implementations yet?
+
+Yes, only the prototypes (MVP).
+
+The command-line app that you expose your local server with: https://github.com/ipns-link/ipns-link
+
+An easy to host IPNS-Link-Gateway: https://github.com/ipns-link/ipns-link-gateway
+
+### How can the community contribute?
+
+Lots of things are yet to be done actually and any help would be highly appreciated. Some high-priority areas where serious help is urgently needed are: 
+
+1. Volunteers need to host public [IPNS-Link-gateway](https://github.com/ipns-link/ipns-link-gateway)s, such as https://ipns.live.
+2. The current implementations, being prototypes, have been rather hurriedly hacked with Bash. That they still work, simply tells how better things would be once the codebase is ported to Go, JS etc. So, volunteer developers are needed.
+3. The [project](https://github.com/ipns-link) lacks a decent homepage. PRs are highly welcome.
+4. Perhaps most of IPNS-Link users would require NAT-traversal. So, volunteers need to contribute [public relays](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#how-to-enable-8).
+
+IPNS-Link is and always will remain Free and Open-Source project by and for the community. The public gateways may be crowd-funded. Sponsors and well-wishers may donate using the corresponding link provided at the landing pages of every gateway.
+
+IPNS-Link is a baby now. If you think it has promise, let others know. Only active participation by the community can make it mature.
+
+### Where can the community discuss, critique or seek help about IPNS-Link freely?
+
+- The Issues or Discussions section of any repository in the [IPNS-Link organization](https://github.com/ipns-link) at GitHub.
+- Reddit: [r/ipns_link](r/ipns_link)
+- [discuss.ipfs.io](https://discuss.ipfs.io)
+
+### What influenced IPNS-Link?
+
+[ngrok](https://ngrok.com/), [localhost.run](https://localhost.run/), [uplink](https://getuplink.de/).
+
+### What's ahead?
+
+1. Free .ipns domain names for all websites addressed using IPNS.
+2. A search engine for such websites.
+
+### Can I join the IPNS-Link organization?
+
+Contributors may be sent membership invitations for [IPNS-Link's GitHub organization](https://github.com/ipns-link).
+
