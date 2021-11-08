@@ -2,7 +2,7 @@
 
 [One can add a static website to IPFS and address it using IPNS](https://medium.com/pinata/how-to-easily-host-a-website-on-ipfs-9d842b5d6a01). The website can then be accessed through any IPFS gateway. But what about a dynamic website or web app that needs to run server-side code! **IPNS-Link** makes it possible to address any http-server using IPNS.
 
-[This page presents a high-level overview. The detailed specs and implementation-intricacies would be documented elsewhere in this repository].
+[This page presents a high-level overview. The detailed specs and implementation-intricacies would be documented [elsewhere](/specs.md)].
 
 ### A picture is worth a thousand words. So let's start with one:
 
