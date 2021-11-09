@@ -53,11 +53,11 @@ The gateways assign each website its own subdomain.
 
 
 
-### But an IPFS gateway such as ipfs.io doesn't support all these features:
+### But an IPFS gateway such as ipfs.io doesn't support all these features!
 
-True. [IPFS-gateway](https://docs.ipfs.io/concepts/ipfs-gateway/#overview)s are designed to serve static sites only, they can't serve as proxies. Hence, IPNS-Link needs its own gateway. [ipns.live](https://ipns.live) is an example running the [prototype implementation](https://github.com/ipns-link/ipns-link-gateway). **Anyone can host an IPNS-Link-gateway as the code is free and open-source**.
+True. [IPFS-gateway](https://docs.ipfs.io/concepts/ipfs-gateway/#overview)s are designed to serve static sites only, they can't serve as proxies. Hence, IPNS-Link needs its own gateway. [ipns.live](https://ipns.live) is an example running the [prototype implementation](https://github.com/ipns-link/ipns-link-gateway). **Anyone can host an IPNS-Link-gateway, as the code is free and open-source**.
 
-IPNS-Link-gateways and IPFS gateways, however, complement each other. Whenever Bob puts Alice's IPNS key into an IPFS gateway, it redirects Bob's browser to an IPNS-Link gateway that then connects Bob to Alice's site. On the other hand, an IPNS-Link-gateway redirects almost all requests for static content to IPFS gateways for offloading itself.
+IPNS-Link-gateways and IPFS gateways, however, complement each other. Whenever Bob puts Alice's IPNS key into an IPFS gateway, it redirects Bob's browser to an IPNS-Link gateway that then connects Bob to Alice's site. On the other hand, an IPNS-Link-gateway redirects almost all requests for static contents to IPFS gateways, in order to offload itself.
 
 ### Cool. But why care?
 
@@ -69,7 +69,7 @@ A website (say, `example.com`) that is blocked in a country or region may be acc
 
 ##### Anonymity
 
-Accessing websites through public gateways masks the user's IP address from the websites visited. [Compare [Tor](https://www.torproject.org/) and [VPN](https://en.wikipedia.org/wiki/Virtual_private_network)]. On the other hand, the origin-server's IP may be hidden from the visitors using an upcoming feature of [`ipns-link`](https://github.com/ipns-link/ipns-link).
+Accessing websites through public gateways masks the user's IP address from the websites visited. [Compare [Tor](https://www.torproject.org/) and [VPN](https://en.wikipedia.org/wiki/Virtual_private_network)]. On the other hand, the origin-server's IP may be hidden from the visitors using an upcoming feature of [`ipns-link`](https://github.com/ipns-link/ipns-link), called **Manifest encryption**.
 
 ##### Microhosting
 
@@ -83,17 +83,34 @@ All these might help developers, students, hobbyists and tinkerers host their si
 
 With multiple gateways at their disposal, each visitor can choose the gateway nearest to them. Since each gateway serves the stream content from its local IPFS cache, this would ensure a faster streaming experience. Also the origin-server is significantly offloaded.
 
+##### Self-hosting your blog comments
+
+You can happily host your static blog by pinning the files to IPFS, publishing the CID with IPNS or DNSLink and serving it through any IPFS gateway, local or public. But what if you need a comment system for your blog? If you are not okay using 3rd party services for hosting your comment system, you can [host your own](https://darekkay.com/blog/static-site-comments/#self-hosted) and expose the http end-point with IPNS-Link.
+
 ##### Private network
 
-A giant company can build its own [private IPFS network](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#private-networks) consisting of its many origin-servers and a few public facing IPNS-Link-gateways to securely reverse proxy for all of those backends.
+A giant corporation can build its own [private IPFS network](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#private-networks) consisting of its many origin-servers and a few public facing IPNS-Link-gateways to securely reverse proxy for all of those backends.
+
+##### Shared-hosting providers
+
+Shared hosting providers need to assign a UUID and a subdomain to each accountholder. All that is built into IPNS-Link, the IPNS-key being the UUID and every IPNS-Link-gateway being a subdomain gateway. Therefore, shared-hosting providers can readily adopt IPNS-Link.
+
+If all hosting providers use IPNS-Link, this would have the following benefit. Each hosted website, *regardless of the hosting provider*, can be universally addressed by its unique IPNS-key and accessible using all IPNS-Link-gateways. This would make migrating to another hosting provider seamless, while also enabling multiple points of access.
+
+##### VPN
+
+VPN providers may integrate IPNS-Link-gateways with their infrastructure, to provide access to sites exposed only through IPNS.
 
 ### Any implementations yet?
 
-Yes, only the prototypes (MVP).
+Yes, only the prototypes (MVP) though. We welcome the community to jump in and develop better implementations following the [specs](/specs.md). The specs themselves are subject to discussion and improvement. 
 
-The command-line app that you expose your local server with: https://github.com/ipns-link/ipns-link
+Anyways, the prototypes are these ones --
 
-An easy to host IPNS-Link-Gateway: https://github.com/ipns-link/ipns-link-gateway. Such a gateway is hosted at [ipns.live](https://www.ipns.live).
+- The command-line app that you expose your local server with: https://github.com/ipns-link/ipns-link
+
+- An easy to host IPNS-Link-Gateway: https://github.com/ipns-link/ipns-link-gateway. Such a gateway is hosted at [ipns.live](https://www.ipns.live).
+
 
 ### How can the community contribute?
 
