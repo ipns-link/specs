@@ -87,6 +87,10 @@ With multiple gateways at their disposal, each visitor can choose the gateway ne
 
 You can happily host your static blog by pinning the files to IPFS, publishing the CID with IPNS or DNSLink and serving it through any IPFS gateway, local or public. But what if you need a comment system for your blog? If you are not okay using 3rd party services for hosting your comment system, you can [host your own](https://darekkay.com/blog/static-site-comments/#self-hosted) and expose the http end-point with IPNS-Link.
 
+##### Self-hosting webhook-servers
+
+https://github.com/adnanh/webhook
+
 ##### Private network
 
 A giant corporation can build its own [private IPFS network](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#private-networks) consisting of its many origin-servers and a few public facing IPNS-Link-gateways to securely reverse proxy for all of those backends.
