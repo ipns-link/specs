@@ -27,6 +27,7 @@
 - To ensure rapid dissemination, the Manifest is added to IPFS as **inline** and published using **IPNS pubsub**. Inlining encodes the entire Manifest inside the [CID](https://docs.ipfs.io/concepts/content-addressing/), so that no file needs to be imported separately after resolving the IPNS record. For efficient inlining, the Manifest needs to be as small in size as possible.
 - It is desirable that an IPFS-gateway be able to redirect the Browser to a proxy Gateway, when provided with the IPNS-key of an exposed Origin. However, an IPFS-gateway can only deliver the Manifest file to the Browser. The Manifest, therefore, needs to contain an html redirect to a proxy Gateway.
 - Because Gateways can always peek into the traffic between an end-user and the Origin, the Origin should have the liberty to choose only certain public Gateways as trusted. All the other Gateways would not be able to proxy for the Origin, but be able to redirect the Browser to one of the trusted Gateways.
+- In case the Origin cannot trust any public Gateway, there should be a way to ensure that access is allowed through users' private Gateways only. Such a Gateway may be hosted by the user on localhost or on a personal cloud or VPS. Because private gateways may not have a public address, the Origin cannot provide any trusted Gateway URL in this case. However, the Origin might instead specify a certain webpage, containing instructions for the users, that the public Gateways shall redirect to.
 
 ##### Template
 
@@ -57,6 +58,8 @@ Each Gateway owns a GPG key-pair and serves the corresponding public key at path
 
 If the Origin wants to be accessible through all the Gateways, then, instead of encrypting the JSON with the public keys, it is encrypted with an AES128 symmetric key with the passphrase `ipns-link`.
 
+On the other hand, if the Origin wants to restrict access to the user's private Gateways only, the JSON is  encrypted symmetrically (AES128) with a shared secret. Because 3rd parties don't have access to the secret, public Gateways cannot decipher the all-important JSON. Such Gateways shall 307 redirect the Browser to any URL that may be provided in place of trusted Gateways in the Manifest. If no redirect target is there, a [401](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401) error code shall be issued.
+
 ##### JSON
 
 The JSON contains the following key-value pairs by default. Values that must be non-null have been assigned imaginary values for illustration.
@@ -86,7 +89,7 @@ Meaning of the key-value pairs are discussed below. In the following, the `value
 
 `cache` : The Gateway is meant to serve `GET` requests for all paths prefixed with `<cache.path>` from the immutable (static) directory at `/ipfs/<cache.CID>`. All these requests are therefore served from IPFS and need not reach the Origin, thus reducing latency and offloading Origin.
 
-`on_fail` : On failure to connect (peer) with the Listener, the Gateway is to 307 redirect the browser to `<on_fail>`. The redirect destination might be a URL, an IPFS path `/ipfs/*` or an IPNS-key `/ipns/*`.
+`on_fail` : On failure to connect (peer) with the Listener, the Gateway is to 307 redirect the browser to `<on_fail>`. The redirect destination might be a URL, an IPFS path `/ipfs/*` or an IPNS-key `/ipns/*`. If `null` or empty, the Gateway shall instead issue a [504](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/504) error code.
 
 `stream` :  The Gateway is meant to serve `GET` requests for all paths prefixed with `<stream.path>` from the mutable (dynamic) directory at `/ipns/<stream.keyID>`. All these requests are therefore served from IPFS and need not reach the Origin, thus reducing latency and offloading Origin.
 
@@ -141,6 +144,8 @@ The "pause while idling" strategy might also be applied in case of the Gateways.
 [Prototype Exposer](https://github.com/ipns-link/ipns-link)
 
 [Prototype Gateway](https://github.com/ipns-link/ipns-link-gateway)
+
+
 
 [![Contribute](https://img.shields.io/badge/Contribute%20to-IPNS--Link-brightgreen)](https://github.com/ipns-link/contribute) 
 
