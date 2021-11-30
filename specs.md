@@ -12,7 +12,7 @@
 ### Participating nodes
 
 1.  ***Origin*** : The http-server that is to be exposed. Each Origin is assigned a unique Libp2p-keypair. A hash of the corresponding public key becomes the IPNS name that the Origin-server would ultimately be addressed by. **Note** : By ***IPNS-name*** or ***IPNS-key***, henceforth, we shall refer to this hash.
-2.  ***Listener*** : An IPFS node that listens for incoming connections over p2p-streams and forwards them to the Origin-server(s).
+2.  ***Listener*** : An IPFS node that listens for incoming connections over p2p-streams and forwards them to the Origin-server(s). The protocol name is **/x/ipns-link/`IPNS-key`**
 3.  ***Publisher*** : An IPFS node whose sole job is to periodically publish a ***Manifest*** for each Origin, containing the [multiaddress](https://docs.libp2p.io/concepts/addressing/)es of the Listener and metadata about the Origin. The Manifest is published using [IPNS pubsub](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipns-pubsub) under the IPNS-key of the corresponding Origin. **Note** : The same IPFS node may perform as both Listener and Publisher. However, separating the nodes helps reduce bandwidth consumption.
 4.  ***(Proxy) Gateway*** : An IPFS-aware http-proxy that, when given an IPNS-Key, connects the web-site visitors / end-users to the corresponding Origin via the Listener, after processing the Manifest published under that key. **Note** : This is distinct from an [IPFS-gateway](https://docs.ipfs.io/concepts/ipfs-gateway/), which can only serve static content from IPFS. The proxy Gateway can either be hosted locally by the end-user or publicly by a third-party.
 5.  ***Browser*** : Any user-agent, such as the browser, cURL, HTTPie, Postman etc. that can make http(s) requests to a Gateway on behalf of the end-user.
@@ -136,6 +136,14 @@ The Publisher publishes the Manifest using IPNS pubsub. Unlike the Listener, the
 The "pause while idling" strategy might also be applied in case of the Gateways. The IPFS backend of the Gateway might be resumed when receiving an incoming http-request, and put to sleep once served.
 
 **Note** : Pause and play may be achieved using SIGSTOP and SIGCONT signals respectively.
+
+**TBD** : The p2p-connection between Gateway and the Listener may be bandwidth-limited. This would force exposed sites to serve large static content using the `cache` feature of IPNS-Link, and dynamic content using `swarm`, ensuring efficiency.
+
+
+
+### Gateway
+
+How a model Gateway might work is detailed [here](/gateway.md).
 
 
 
