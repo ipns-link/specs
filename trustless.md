@@ -6,9 +6,9 @@ Technically, Listener too is a middle-man, but being local to the Origin, it is 
 
 ### Solution: TLS passthrough with effective MITM monitoring
 
-In modern TLS, during the initial handshake, the client transmits the fully qualified domain name (FQDN) of its desired server, using a Server Name Indication (SNI) field. Because this information is transmitted before the client even knows the server's public key, SNI is unencrypted. A [TLS Passthrough](https://github.com/SomajitDey/isp) (TLSP) is an MITM that can read the SNI, and route the traffic accordingly to the desired backend, which terminates TLS.
+In modern TLS, during the [initial handshake](https://www.cloudflare.com/en-in/learning/ssl/what-happens-in-a-tls-handshake/), the client transmits the fully qualified domain name (FQDN) of its desired server, using a Server Name Indication (SNI) field. Because this information is transmitted before the client even knows the server's public key, SNI is unencrypted. A [TLS Passthrough](https://github.com/SomajitDey/isp) (TLSP) is an MITM that can read the SNI, and route the traffic accordingly to the desired backend, which terminates TLS.
 
-But there is nothing to prevent the TLSP from acting as an [MITM proxy](https://docs.mitmproxy.org/stable/concepts-howmitmproxyworks/#the-mitm-in-mitmproxy) (MITMP), terminating the TLS itself and creating a parallel TLS connection with the backend. Essentially, an MITMP acts as the server to the client and as the client to the server.
+But there is nothing to prevent the TLSP from acting as an [MITM proxy](https://docs.mitmproxy.org/stable/concepts-howmitmproxyworks/#the-mitm-in-mitmproxy) (MITMP), terminating the TLS itself and creating a parallel TLS connection with the backend. Essentially, an MITMP purports to be the server to the client and the client to the server.
 
 Although MITMPs can't be prevented altogether, they can be caught. For any reputed Gateway provider, the risk of getting caught is sufficient to preclude MITM attacks, as those who do get caught, may be blacklisted and banned.
 
@@ -26,7 +26,7 @@ The following describes how E2E is established.
 
 1. Gateway receives an HTTPS request with SNI `kid.e2e.gateway.tld`. It extracts the `kid` from the SNI.
 2. Gateway retrieves the Manifest for `kid`, decrypts it, peers with Origin and establishes TLS passthrough using the p2p protocol `/x/e2e/kid`. It also reads the TLS public key fingerprint of Origin, from the Manifest.
-3. Origin creates a CSR corresponding to the SNI, using its RSA 2048 public key. Using ACME, it gets a valid TLS certificate from Let's Encrypt or ZeroSSL. To complete the TLS handshake, it responds to the Client Hello from Browser with the certificate, in its Server Hello.
+3. Origin creates a [CSR](https://en.wikipedia.org/wiki/Certificate_signing_request) corresponding to the SNI, using its RSA 2048 public key. Using ACME, it gets a valid TLS certificate from Let's Encrypt or ZeroSSL. To complete the TLS handshake, it responds to the Client Hello from Browser with the certificate, in its Server Hello.
 4. While passing the Server Hello through, Gateway extracts the public key and compares it with the fingerprint it read from the Manifest. On match, it lets the passthrough proceed. Otherwise, further connectivity is aborted, and the Origin is blacklisted locally. This prevents Origin from linking one public key in the Manifest and using another for TLS.
 
 The following describes how to monitor for possible MITMP at Gateway using client-side code. The client-side code may consist of a browser extension that reads URLs of the form `https://kid.e2e.gateway.tld/*` and screens `gateway.tld` for MITMP, or, it may consist of a static web-page (hosted on IPFS) where the end-user can manually enter `gateway.tld` and `kid` to screen for MITMP. The monitor might also be a command-line script or desktop app.
@@ -37,7 +37,28 @@ The following describes how to monitor for possible MITMP at Gateway using clien
 
 **Note**: 
 
+- Client-side monitors screen for any on-path MITMP even at the level of ISP or DNS provider.
 - Once CAs start supporting ED25519, the libp2p-key of the Origin may be used for TLS. The `kid` itself would serve as the fingerprint then.
 - Client-side monitoring from different clients originate from different IP addresses - unpredictable to the Gateway. The suspect Gateway can no more dupe the monitor by passing TLS through instead of proxying.
+- The [TLS-ALPN-01](https://letsencrypt.org/docs/challenge-types/#tls-alpn-01) challenge for domain validation cannot always screen for MITMP. To avoid getting detected, the Gateway can simply passthrough the validation traffic as soon as it sees "[acme-tls/1](https://datatracker.ietf.org/doc/html/rfc8737#section-4)" as the Application-layer protocol.
 - Libp2p tunnels are themselves secured with [TLS 1.3](https://github.com/libp2p/specs/blob/master/tls/tls.md).
+
+### HTTPS enabled DNSLinks and DNS-based load balancing
+
+[DNSLink](https://dnslink.io/)s are most convenient when they are CNAMEd to a target Gateway. In conventional mode where TLS terminates at the Gateway, one cannot use https://dns.link unless the target Gateway can generate a TLS certificate for `dns.link` on the fly using [non-DNS-based challenges](https://letsencrypt.org/docs/challenge-types/). Because of the huge number of possible DNSLinks, which cannot be served with a catch-all wildcard certificate, most Gateways may not be able to provision per DNSLink certificates, because of latency and disk space concerns.
+
+Any given Origin, however, would be associated with only a small number of DNSLinks, and therefore, can provision certificates with ease. Whenever a TLSP Gateway receives HTTPS traffic with `dns.link` as the SNI, it can retrieve the `kid` by resolving the DNSLink and route the traffic accordingly.
+
+Because TLS is terminated by the Origin, and *all* Gateways forward to the Origin, `https://dns.link` would work regardless of which Gateway `dns.link` is CNAMEd to. More conveniently, DNS records for `dns.link` may be configured to target multiple Gateways, in order to take advantage of [DNS-based load balancing](https://www.cloudflare.com/en-in/learning/performance/what-is-dns-load-balancing/).
+
+### Umbrella domain
+
+Conventional DNSLinks, however, are not feasible for self-hosters who cannot afford a domain name. In view of this, IPNS-Link organization might provide an overarching domain, such as `umbrella.tld`, as follows:
+
+1. IPNS-Link organization is the sole controller of the domain. For DNS-based load balancing, it CNAMEs `*.umbrella.tld` to all registered public Gateways that it actively monitors. Whenever a Gateway fails the health check, the corresponding CNAME or A record is removed, until it is online again.
+2. Whenever a Gateway receives `https://kid.umbrella.tld`, it forwards the request to the Origin corresponding to `kid`, which generates a certificate for `kid.umbrella.tld` on the fly using a TLS-ALPN-01 challenge. Note that the same certificate can now be used for requests coming via different Gateways.
+
+Client-side MITM monitor might also benefit from this. Repeated monitoring attempts for `kid.umbrella.tld` screens all known paths to Origin.
+
+Having an umbrella domain can enable DNS-based load-balancing for the default (non-E2E) mode too. To illustrate, if `umbrella.tld` is CNAMEd to all the registered Gateways, then URLs like `https://umbrella.tld/ipns/kid` may be TLS-terminated at the Gateway and redirected to `https://kid.ipns.gateway.tld`.
 

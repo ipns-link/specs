@@ -123,6 +123,8 @@ IPFS uses [transport-encryption](https://docs.ipfs.io/concepts/privacy-and-encry
 - The end-user hosts a local Gateway.
 - The end-user uses an HTTPS enabled public Gateway.
 
+[Here](/trustless.md) is a draft proposal for an optional TLS/SSL passthrough mode that would make `Browser <--> Origin` demonstrably end-to-end encrypted.
+
 
 
 ### Bandwidth savings
