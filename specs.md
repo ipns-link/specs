@@ -4,17 +4,17 @@
 
 ### Main goals
 
-1. Make any http-server addressable by an [IPNS](https://docs.ipfs.io/concepts/ipns/) name or key. This will be referred to as ***exposing an origin-server***.
+1. Make any http-server addressable by an [IPNS](https://docs.ipfs.io/concepts/ipns/) key. This will be referred to as ***exposing an origin-server***.
 2. Access the server using any local or public gateway.
 
 
 
 ### Participating nodes
 
-1.  ***Origin*** : The http-server that is to be exposed. Each Origin is assigned a unique Libp2p-keypair. A hash of the corresponding public key becomes the IPNS name that the Origin-server would ultimately be addressed by. **Note** : By ***IPNS-name*** or ***IPNS-key***, henceforth, we shall refer to this hash.
-2.  ***Listener*** : An IPFS node that listens for incoming connections over p2p-streams and forwards them to the Origin-server(s). The protocol name is **/x/ipns-link/`IPNS-key`**
-3.  ***Publisher*** : An IPFS node whose sole job is to periodically publish a ***Manifest*** for each Origin, containing the [multiaddress](https://docs.libp2p.io/concepts/addressing/)es of the Listener and metadata about the Origin. The Manifest is published using [IPNS pubsub](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipns-pubsub) under the IPNS-key of the corresponding Origin. **Note** : The same IPFS node may perform as both Listener and Publisher. However, separating the nodes helps reduce bandwidth consumption.
-4.  ***(Proxy) Gateway*** : An IPFS-aware http-proxy that, when given an IPNS-Key, connects the web-site visitors / end-users to the corresponding Origin via the Listener, after processing the Manifest published under that key. **Note** : This is distinct from an [IPFS-gateway](https://docs.ipfs.io/concepts/ipfs-gateway/), which can only serve static content from IPFS. The proxy Gateway can either be hosted locally by the end-user or publicly by a third-party.
+1.  ***Origin*** : The http-server that is to be exposed. Each Origin is assigned a unique Libp2p-keypair, the hash of the public key of this keypair is referred to as the **OriginID**.
+2.  ***Listener*** : An IPFS node that listens for incoming connections over p2p-streams and forwards them to the Origins. The protocol name is **/x/ipns-link/OriginID**
+3.  ***Publisher*** : An IPFS node whose sole job is to periodically publish a ***Manifest*** for each Origin, containing the [multiaddress](https://docs.libp2p.io/concepts/addressing/)es of the Listener and metadata about the Origin. The Manifest is published using [IPNS pubsub](https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipns-pubsub) under the OriginID of the corresponding Origin. **Note** : The same IPFS node may perform as both Listener and Publisher. However, separating the nodes helps reduce bandwidth consumption.
+4.  ***(Proxy) Gateway*** : An IPFS-aware http-proxy that, when given an OriginID, connects the web-site visitors / end-users to the corresponding Origin via the Listener, after processing the Manifest published under that key. **Note** : This is distinct from an [IPFS-gateway](https://docs.ipfs.io/concepts/ipfs-gateway/), which can only serve static content from IPFS. The proxy Gateway can either be hosted locally by the end-user or publicly by a third-party.
 5.  ***Browser*** : Any user-agent, such as the browser, cURL, HTTPie, Postman etc. that can make http(s) requests to a Gateway on behalf of the end-user.
 
 
@@ -25,7 +25,7 @@
 
 - The Manifest contains all the information a Gateway needs to discover and connect to the Origin, through the Listener. In addition, it contains some instructions for the Gateway, set by the owner of the Origin. 
 - To ensure rapid dissemination, the Manifest is added to IPFS as **inline** and published using **IPNS pubsub**. Inlining encodes the entire Manifest inside the [CID](https://docs.ipfs.io/concepts/content-addressing/), so that no file needs to be imported separately after resolving the IPNS record. For efficient inlining, the Manifest needs to be as small in size as possible.
-- It is desirable that an IPFS-gateway be able to redirect the Browser to a proxy Gateway, when provided with the IPNS-key of an exposed Origin. However, an IPFS-gateway can only deliver the Manifest file to the Browser. The Manifest, therefore, needs to contain an html redirect to a proxy Gateway.
+- It is desirable that an IPFS-gateway be able to redirect the Browser to a proxy Gateway, when provided with the OriginID of an exposed Origin. However, an IPFS-gateway can only deliver the Manifest file to the Browser. The Manifest, therefore, needs to contain an html redirect to a proxy Gateway.
 - Because Gateways can always peek into the traffic between an end-user and the Origin, the Origin should have the liberty to choose only certain public Gateways as trusted. All the other Gateways would not be able to proxy for the Origin, but be able to redirect the Browser to one of the trusted Gateways.
 - In case the Origin cannot trust any public Gateway, there should be a way to ensure that access is allowed through users' private Gateways only. Such a Gateway may be hosted by the user on localhost or on a personal cloud or VPS. Because private gateways may not have a public address, the Origin cannot provide any trusted Gateway URL in this case. However, the Origin might instead specify a certain webpage, containing instructions for the users, that the public Gateways shall redirect to.
 
@@ -34,12 +34,12 @@
 In view of the above, the Manifest is specified to be a small static site with nothing but a single `index.html`, henceforth referred to as **index**. The template for index is as follows.
 
 ```html
-<meta http-equiv="refresh" content="0; url=https://gateway.tld/ipns/Key">
+<meta http-equiv="refresh" content="0; url=https://gateway.tld/ipns/OriginID">
 
 <title>Redirecting...</title>
 
 If you are not redirected automatically, follow this 
-<a href='https://official-gateway.tld/ipns/Key'>link</a>
+<a href='https://official-gateway.tld/ipns/OriginID'>link</a>
 
 <!--IPNS-Link--
 ciphertext in multibase (base64, inline)
@@ -54,7 +54,7 @@ The comment block starts with a single line containing an **GPG-encrypted JSON**
 
 ##### Encryption
 
-Each Gateway owns a GPG key-pair and serves the corresponding public key at path `/pubkey`. The JSON is encrypted with the GPG public keys of the trusted Gateways. This makes sure only the trusted Gateways can read the JSON. Gateways that can't decrypt it, would [307 redirect](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307) the Browser to any one of the trusted Gateways, which may be chosen randomly.
+Each Gateway owns a GPG keypair and serves the corresponding public key at path `/pubkey`. The JSON is encrypted with the GPG public keys of the trusted Gateways. This makes sure only the trusted Gateways can read the JSON. Gateways that can't decrypt it, would [307 redirect](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307) the Browser to any one of the trusted Gateways, which may be chosen randomly.
 
 If the Origin wants to be accessible through all the Gateways, then, instead of encrypting the JSON with the public keys, it is encrypted with an AES128 symmetric key with the passphrase `ipns-link`.
 
@@ -89,9 +89,9 @@ Meaning of the key-value pairs are discussed below. In the following, the `value
 
 `cache` : The Gateway is meant to serve `GET` requests for all paths prefixed with `<cache.path>` from the immutable (static) directory at `/ipfs/<cache.CID>`. All these requests are therefore served from IPFS and need not reach the Origin, thus reducing latency and offloading Origin.
 
-`on_fail` : On failure to connect (peer) with the Listener, the Gateway is to 307 redirect the browser to `<on_fail>`. The redirect destination might be a URL, an IPFS path `/ipfs/*` or an IPNS-key `/ipns/*`. If `null` or empty, the Gateway shall instead issue a [504](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/504) error code.
+`on_fail` : On failure to connect (peer) with the Listener, the Gateway is to 307 redirect the browser to `<on_fail>`. The redirect destination might be a URL, an IPFS path `/ipfs/*` or an OriginID `/ipns/*`. If `null` or empty, the Gateway shall instead issue a [504](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/504) error code.
 
-`stream` :  The Gateway is meant to serve `GET` requests for all paths prefixed with `<stream.path>` from the mutable (dynamic) directory at `/ipns/<stream.keyID>`. All these requests are therefore served from IPFS and need not reach the Origin, thus reducing latency and offloading Origin.
+`stream` :  The Gateway is meant to serve `GET` requests for all paths prefixed with `<stream.path>` from the mutable (dynamic) directory at `/ipns/<stream.ID>`. All these requests are therefore served from IPFS and need not reach the Origin, thus reducing latency and offloading Origin.
 
 `host` : Instructs the Gateway to use `<host>` in the Host header while connecting to Origin.
 
@@ -104,8 +104,8 @@ Meaning of the key-value pairs are discussed below. In the following, the `value
 ```bash
 # Generate inline CID
 ipfs add --inline --inline-limit=10000 -wQn index.html
-# Publish with IPNSKey corresponding to Origin
-ipfs name publish --key=IPNSKey -Q CID
+# Publish with keyName corresponding to Origin
+ipfs name publish --key=keyName -Q CID
 ```
 
 
