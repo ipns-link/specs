@@ -27,7 +27,7 @@
 
 ##### No need for domain names or DDNS. The OriginID is enough
 
-- Alice can simply export her libp2p-keypair into a file, copy the file to another machine and import the keypair there. She can then port her entire website to the new machine and expose its local server with `ipns-link`. Because she is using the same key-pair, her website can still be accessed using the same OriginID, although her website is now running on an entirely new machine with perhaps a new public IP address.
+- Alice can simply export her libp2p-keypair into a file, copy the file to another machine and import the keypair there. She can then port her entire website to the new machine and expose its local server with `ipns-link`. Because she is using the same keypair, her website can still be accessed using the same OriginID, although her website is now running on an entirely new machine with perhaps a new public IP address.
 
 - Similarly, a dynamic public IP address doesn't cause any problem either.
 
