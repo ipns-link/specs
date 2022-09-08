@@ -1,6 +1,6 @@
 # Static Manifest Gateways
 
-Author: @Winterhuman
+Author: [@Winterhuman](https://github.com/Winterhuman)
 
 ## Issues with Public IPNS-Link Gateways
 
